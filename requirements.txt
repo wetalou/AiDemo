@@ -3,3 +3,9 @@ numpy
 opencv-python
 pillow
 openai
+python-dotenv
+
+langchain
+langchain-openai
+python-dotenv
+requests
