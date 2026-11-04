@@ -1,30 +1,31 @@
-from openai import OpenAI
-from dotenv import load_dotenv
-import os
+"""
+案例：阿里百炼流式调用（含思考过程）
+==================================
+从 app.common 读取 ALI_BAILIAN_* / DATA_*，用 OpenAI 兼容 SDK 流式输出。
+"""
 
-# 加载 .env 配置文件
-load_dotenv()
+import sys
+from pathlib import Path
 
-client = OpenAI(
-    api_key=os.getenv("ALI_BAILIAN_API_KEY"),
-    base_url=os.getenv("ALI_BAILIAN_BASE_URL"),
-)
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-# completion = client.chat.completions.create(
-#     model=os.getenv("ALI_BAILIAN_MODEL"),
-#     messages=[{"role": "user", "content": "你是谁"}],
-#     extra_body={"enable_thinking": True, "reasoning_effort": "max"},
-#     stream=True,
-# )
+from app.common.init_llm import LlmConfigError, get_openai_client, resolve_bailian_model
+
+try:
+    client = get_openai_client(provider="bailian")
+    model_name = resolve_bailian_model()
+except LlmConfigError as e:
+    raise SystemExit(str(e)) from e
 
 messages = [{"role": "user", "content": "你是谁"}]
 completion = client.chat.completions.create(
-    model=os.getenv("ALI_BAILIAN_MODEL"),  # 您可以按需更换为其它深度思考模型
+    model=model_name,
     messages=messages,
     extra_body={"enable_thinking": True, "reasoning_effort": "max"},
-    stream=True
+    stream=True,
 )
-is_answering = False  # 是否进入回复阶段
+
+is_answering = False
 print("\n" + "=" * 20 + "思考过程" + "=" * 20)
 for chunk in completion:
     if not chunk.choices:

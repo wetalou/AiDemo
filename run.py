@@ -2,37 +2,47 @@
 run.py —— Demo 快速选择器
 ==========================
 运行方式：python run.py
-功能：列出 demos/ 目录下所有示例，输入编号即可运行对应的 Demo。
-     新增 demo 时只要往 demos/ 里放一个 .py 文件，自动出现在菜单中。
+功能：扫描 app/gradio、app/models、app/agents 顶层示例，输入编号即可运行。
 """
 
 import os
 import subprocess
 import sys
 
-# demos/ 目录路径（相对于本文件所在位置）
-DEMOS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "demos")
+ROOT = os.path.dirname(os.path.abspath(__file__))
+APP_DIR = os.path.join(ROOT, "app")
+
+# 主题目录（相对 app/，顺序即菜单分组顺序）
+TOPIC_DIRS = ("gradio", "models", "agents")
 
 
 def list_demos():
-    """扫描 demos/ 目录，返回按文件名排序的 .py 文件列表"""
+    """扫描各主题目录顶层 .py（排除 __init__.py）。"""
     demos = []
-    if os.path.isdir(DEMOS_DIR):
-        # 取所有 .py 文件，排除 __开头 的（比如 __pycache__）
-        files = sorted(f for f in os.listdir(DEMOS_DIR) if f.endswith(".py") and not f.startswith("__"))
-        demos = [os.path.join(DEMOS_DIR, f) for f in files]
+    for topic in TOPIC_DIRS:
+        topic_path = os.path.join(APP_DIR, topic)
+        if not os.path.isdir(topic_path):
+            continue
+        files = sorted(
+            f
+            for f in os.listdir(topic_path)
+            if f.endswith(".py") and not f.startswith("__")
+        )
+        for name in files:
+            demos.append({
+                "label": f"app/{topic}/{name}",
+                "path": os.path.join(topic_path, name),
+            })
     return demos
 
 
 def show_menu(demos):
-    """打印菜单列表"""
     print("\n" + "=" * 50)
-    print("  Gradio Demo 快速选择器")
+    print("  AiDemo 快速选择器")
     print("=" * 50)
-    for idx, path in enumerate(demos, 1):
-        name = os.path.basename(path)  # 只取文件名
-        print(f"  [{idx}] {name}")
-    print(f"  [q]  退出")
+    for idx, item in enumerate(demos, 1):
+        print(f"  [{idx}] {item['label']}")
+    print("  [q]  退出")
     print("-" * 50)
 
 
@@ -40,9 +50,13 @@ def main():
     demos = list_demos()
 
     if not demos:
-        print(f"❌ 在 {DEMOS_DIR} 下没有找到任何 demo 文件！")
-        print("   请创建一些 .py 文件，比如 demos/01_text_reverse.py")
+        print("❌ 未找到任何示例脚本！")
+        print("   请确认存在 app/gradio、app/models、app/agents 目录。")
         return
+
+    env = os.environ.copy()
+    existing = env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = ROOT if not existing else ROOT + os.pathsep + existing
 
     while True:
         show_menu(demos)
@@ -56,9 +70,8 @@ def main():
             idx = int(choice)
             if 1 <= idx <= len(demos):
                 target = demos[idx - 1]
-                print(f"\n🚀 启动 {os.path.basename(target)} ...\n")
-                # 在新进程中运行，这样可以 Ctrl+C 退出后回到菜单
-                subprocess.run([sys.executable, target])
+                print(f"\n🚀 启动 {target['label']} ...\n")
+                subprocess.run([sys.executable, target["path"]], env=env, cwd=ROOT)
             else:
                 print(f"⚠️  请输入 1 ~ {len(demos)} 之间的数字")
         except ValueError:

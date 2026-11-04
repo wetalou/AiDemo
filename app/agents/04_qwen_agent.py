@@ -6,30 +6,33 @@
     1. OpenAI SDK 的 tools 参数 —— 把工具 JSON Schema 告诉大模型
     2. tool_calls 响应解析 —— 判断大模型是要调用工具还是直接回答
     3. 工具执行循环 —— 调用函数 → 结果回传 → 再请求模型 → 直到最终回复
-    4. tools/ 目录的工具注册机制 —— 新增工具只需在 tools/ 下加文件
+    4. app/agents/tools 的工具注册机制 —— 新增工具只需加文件并 import
 可用工具：
     - get_weather(city)  查询城市天气
 依赖：
-    pip install gradio openai requests
+    pip install gradio openai requests python-dotenv
 前置准备：
-    设置环境变量 DASHSCOPE_API_KEY
-    $env:DASHSCOPE_API_KEY = "sk-你的key"
+    在 .env 中设置 DASHSCOPE_API_KEY
 """
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
 import gradio as gr
-import os
-import json
-from openai import OpenAI
-from tools import get_all_tools, dispatch
 
-api_key = os.getenv("DASHSCOPE_API_KEY")
-if not api_key:
-    print("未设置 DASHSCOPE_API_KEY 环境变量！")
+from app.agents.tools import dispatch, get_all_tools
+from app.common.env_utils import DASHSCOPE_API_KEY, config_hint
+from app.common.init_llm import LlmConfigError, get_openai_client
 
-client = OpenAI(
-    api_key=api_key,
-    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
-)
+try:
+    client = get_openai_client(provider="dashscope")
+    api_key = DASHSCOPE_API_KEY
+except LlmConfigError as e:
+    print(str(e))
+    client = None
+    api_key = None
 
 MODEL = "qwen-max"
 MAX_TOOL_ROUNDS = 5
@@ -97,8 +100,8 @@ def _do_tool_calls(messages, assistant_message):
 
 
 def agent_chat(message, history):
-    if not api_key:
-        return "未设置 DASHSCOPE_API_KEY 环境变量，请先配置后重试。"
+    if not api_key or client is None:
+        return f"未设置 DASHSCOPE_API_KEY，请先配置后重试。{config_hint()}"
 
     messages = _build_messages(message, history)
 

@@ -1,6 +1,6 @@
 """
-tools/ —— AI Agent 工具包
-=========================
+app/agents/tools/ —— AI Agent 工具包
+====================================
 在此目录下放置各种可供大模型调用的工具模块。
 
 新增工具的步骤：
@@ -12,6 +12,8 @@ tools/ —— AI Agent 工具包
     - get_weather(city)  天气查询
 """
 
-from tools.registry import register_tool, get_all_tools, dispatch
+from app.agents.tools.registry import dispatch, get_all_tools, register_tool
 
-import tools.weather
+import app.agents.tools.weather  # noqa: F401  触发注册
+
+__all__ = ["register_tool", "get_all_tools", "dispatch"]

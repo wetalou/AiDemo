@@ -5,7 +5,8 @@ tools/weather.py —— 天气查询工具
 """
 
 import requests
-from tools.registry import register_tool
+
+from app.agents.tools.registry import register_tool
 
 
 def get_weather(city: str) -> str:
